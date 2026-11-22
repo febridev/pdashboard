@@ -1,13 +1,19 @@
 use crate::models::response::TasksResponse;
 use crate::models::task::DocumentTasks;
+use crate::services::auth::AuthService;
 use crate::services::outline::OutlineClient;
 use crate::services::parser::parse_tasks_from_markdown;
 use axum::extract::State;
 use axum::Json;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 #[derive(Clone)]
 pub struct AppState {
     pub outline_client: OutlineClient,
+    pub auth_service: Arc<AuthService>,
+    pub csrf_states: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
 pub async fn get_tasks(State(state): State<AppState>) -> Json<TasksResponse> {

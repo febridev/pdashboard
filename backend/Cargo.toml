@@ -14,6 +14,10 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
+oauth2 = "4.4"
+axum-extra = { version = "0.9", features = ["cookie"] }
+rand = "0.8"
+time = "0.3"
 
 [lib]
 name = "pdashboard_backend"

@@ -1,0 +1,8 @@
+# The build context is this directory, so the repo-root .dockerignore does
+# not apply here.
+target/
+tests/
+.env
+.env.example
+Dockerfile
+.dockerignore

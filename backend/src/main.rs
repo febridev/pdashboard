@@ -27,6 +27,7 @@ async fn main() {
         outline_client,
         auth_service,
         csrf_states: Arc::new(Mutex::new(HashMap::new())),
+        sessions: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));

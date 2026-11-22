@@ -1,16 +1,41 @@
 use axum::extract::{Query, State};
+use axum::http::StatusCode;
 use axum::response::Redirect;
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
+use rand::Rng;
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::routes::tasks::AppState;
+use crate::routes::tasks::{AppState, SessionData};
 
 #[derive(Deserialize)]
 pub struct AuthCallback {
     pub code: String,
     pub state: String,
+}
+
+pub struct RequireAuth;
+
+#[axum::async_trait]
+impl<S> axum::extract::FromRequestParts<S> for RequireAuth
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        _state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let jar = axum_extra::extract::CookieJar::from_request_parts(parts, _state)
+            .await
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "Missing cookies"))?;
+
+        jar.get("session")
+            .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated"))
+            .map(|_| RequireAuth)
+    }
 }
 
 pub async fn google_login(State(state): State<AppState>) -> (CookieJar, Redirect) {
@@ -37,6 +62,7 @@ pub async fn google_login(State(state): State<AppState>) -> (CookieJar, Redirect
         .path("/")
         .http_only(true)
         .secure(true)
+        .same_site(SameSite::Lax)
         .max_age(time::Duration::minutes(5))
         .build();
 
@@ -50,9 +76,7 @@ pub async fn google_callback(
     jar: CookieJar,
 ) -> Result<(CookieJar, Redirect), String> {
     // Validate CSRF token from cookie
-    let csrf_cookie = jar
-        .get("csrf_state")
-        .ok_or("Missing CSRF cookie")?;
+    let csrf_cookie = jar.get("csrf_state").ok_or("Missing CSRF cookie")?;
 
     {
         let mut states = state.csrf_states.lock().unwrap();
@@ -80,24 +104,57 @@ pub async fn google_callback(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Create session cookie
-    let access_token = token_result.access_token().secret();
-    let session_cookie = Cookie::build(("session", access_token.to_string()))
+    let access_token = token_result.access_token().secret().clone();
+
+    // Generate random session ID
+    let session_id: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+
+    // Store session server-side
+    {
+        let mut sessions = state.sessions.lock().unwrap();
+        sessions.insert(
+            session_id.clone(),
+            SessionData {
+                access_token,
+                created_at: std::time::Instant::now(),
+            },
+        );
+    }
+
+    // Set session cookie with ID (not raw token)
+    let session_cookie = Cookie::build(("session", session_id))
         .path("/")
         .http_only(true)
         .secure(true)
+        .same_site(SameSite::Lax)
         .max_age(time::Duration::days(7))
         .build();
 
     // Remove CSRF cookie, add session cookie
-    let jar = jar
-        .remove(Cookie::from("csrf_state"))
-        .add(session_cookie);
+    let removal = Cookie::build(("csrf_state", ""))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(time::Duration::seconds(0))
+        .build();
+    let jar = jar.remove(removal).add(session_cookie);
 
     Ok((jar, Redirect::to("/")))
 }
 
 pub async fn logout(jar: CookieJar) -> (CookieJar, Redirect) {
-    let jar = jar.remove(Cookie::from("session"));
+    let removal = Cookie::build(("session", ""))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(time::Duration::seconds(0))
+        .build();
+    let jar = jar.remove(removal);
     (jar, Redirect::to("/"))
 }

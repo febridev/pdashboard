@@ -23,18 +23,25 @@ pub fn parse_tasks_from_markdown(markdown: &str) -> Vec<TaskGroup> {
             current_header = trimmed.trim_start_matches('#').trim().to_string();
         }
         // Check for task items
-        else if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") {
-            let status = if trimmed.starts_with("- [x]") {
+        else if trimmed.starts_with("- [ ]")
+            || trimmed.starts_with("- [x]")
+            || trimmed.starts_with("- [X]")
+        {
+            let status = if trimmed.starts_with("- [x]") || trimmed.starts_with("- [X]") {
                 TaskStatus::Completed
             } else {
                 TaskStatus::Pending
             };
 
-            let text = trimmed
-                .trim_start_matches("- [ ]")
-                .trim_start_matches("- [x]")
-                .trim()
-                .to_string();
+            let text = if let Some(rest) = trimmed.strip_prefix("- [ ]") {
+                rest.trim().to_string()
+            } else if let Some(rest) = trimmed.strip_prefix("- [x]") {
+                rest.trim().to_string()
+            } else if let Some(rest) = trimmed.strip_prefix("- [X]") {
+                rest.trim().to_string()
+            } else {
+                continue; // shouldn't happen, but safe fallback
+            };
 
             current_tasks.push(Task { text, status });
         }

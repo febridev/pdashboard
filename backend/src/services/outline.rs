@@ -6,7 +6,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct OutlineClient {
     client: Client,
-    config: Arc<Config>,
+    pub config: Arc<Config>,
 }
 
 impl OutlineClient {

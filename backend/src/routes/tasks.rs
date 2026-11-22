@@ -30,37 +30,59 @@ pub async fn get_tasks(
 ) -> Json<TasksResponse> {
     let mut all_tasks = Vec::new();
 
-    match state.outline_client.list_documents().await {
-        Ok(documents) => {
-            for doc_summary in documents {
-                if let Some(task_info) = doc_summary.tasks {
-                    if task_info.total > 0 {
-                        match state.outline_client.get_document(&doc_summary.id).await {
-                            Ok(doc) => {
-                                if let Some(text) = doc.text {
-                                    let groups = parse_tasks_from_markdown(&text);
-                                    if !groups.is_empty() {
-                                        all_tasks.push(DocumentTasks {
-                                            document_title: doc.title,
-                                            groups,
-                                        });
+    // Check if a specific document ID is configured
+    if let Some(doc_id) = &state.outline_client.config.outline_task_document_id {
+        // Fetch the specific document
+        match state.outline_client.get_document(doc_id).await {
+            Ok(doc) => {
+                if let Some(text) = doc.text {
+                    let groups = parse_tasks_from_markdown(&text);
+                    if !groups.is_empty() {
+                        all_tasks.push(DocumentTasks {
+                            document_title: doc.title,
+                            groups,
+                        });
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to fetch document {}: {}", doc_id, e);
+            }
+        }
+    } else {
+        // Fall back to listing all documents
+        match state.outline_client.list_documents().await {
+            Ok(documents) => {
+                for doc_summary in documents {
+                    if let Some(task_info) = doc_summary.tasks {
+                        if task_info.total > 0 {
+                            match state.outline_client.get_document(&doc_summary.id).await {
+                                Ok(doc) => {
+                                    if let Some(text) = doc.text {
+                                        let groups = parse_tasks_from_markdown(&text);
+                                        if !groups.is_empty() {
+                                            all_tasks.push(DocumentTasks {
+                                                document_title: doc.title,
+                                                groups,
+                                            });
+                                        }
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to fetch document {}: {}",
-                                    doc_summary.id,
-                                    e
-                                );
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to fetch document {}: {}",
+                                        doc_summary.id,
+                                        e
+                                    );
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        Err(e) => {
-            tracing::error!("Failed to list documents from Outline: {}", e);
+            Err(e) => {
+                tracing::error!("Failed to list documents from Outline: {}", e);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ use serde::Deserialize;
 pub struct Config {
     pub outline_api_url: String,
     pub outline_api_key: String,
+    pub outline_task_document_id: Option<String>,
     pub google_client_id: String,
     pub google_client_secret: String,
     pub google_redirect_uri: String,
@@ -17,6 +18,7 @@ impl Config {
         Self {
             outline_api_url: std::env::var("OUTLINE_API_URL").expect("OUTLINE_API_URL must be set"),
             outline_api_key: std::env::var("OUTLINE_API_KEY").expect("OUTLINE_API_KEY must be set"),
+            outline_task_document_id: std::env::var("OUTLINE_TASK_DOCUMENT_ID").ok(),
             google_client_id: std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set"),
             google_client_secret: std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set"),
             google_redirect_uri: std::env::var("GOOGLE_REDIRECT_URI").expect("GOOGLE_REDIRECT_URI must be set"),

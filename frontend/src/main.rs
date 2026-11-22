@@ -1,4 +1,6 @@
+mod api;
 mod components;
+mod models;
 
 use components::kanban::KanbanBoard;
 use dioxus::prelude::*;

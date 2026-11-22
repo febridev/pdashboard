@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::api::fetch_tasks;
+use crate::api::{fetch_tasks, ApiError};
 use crate::models::task::{Task, TaskStatus};
 
 #[component]
@@ -16,18 +16,39 @@ pub fn KanbanBoard() -> Element {
                 authenticated.set(true);
                 loading.set(false);
             }
-            Err(e) => {
-                if e.contains("Not authenticated") {
-                    authenticated.set(false);
-                } else {
-                    error.set(Some(e));
-                }
+            Err(ApiError::Unauthorized) => {
+                authenticated.set(false);
+                loading.set(false);
+            }
+            Err(ApiError::Other(e)) => {
+                error.set(Some(e));
                 loading.set(false);
             }
         }
     });
 
-    // Show login button if not authenticated
+    // Show real errors visibly: a failed request (network, proxy, parsing...)
+    // must never masquerade as "please sign in".
+    if let Some(err) = error() {
+        return rsx! {
+            div {
+                style: "display: flex; justify-content: center; align-items: center; min-height: 400px;",
+                div {
+                    style: "background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; max-width: 480px;",
+                    h2 {
+                        style: "color: #ef4444; margin-bottom: 20px;",
+                        "Failed to load tasks"
+                    }
+                    p {
+                        style: "color: #6b7280; margin-bottom: 30px; font-size: 14px; word-break: break-word;",
+                        "{err}"
+                    }
+                }
+            }
+        };
+    }
+
+    // Show login button only on a genuine 401 from the API
     if !authenticated() && !loading() {
         return rsx! {
             div {

@@ -7,10 +7,6 @@ pub async fn fetch_tasks() -> Result<TasksResponse, String> {
     
     // Check for authentication errors
     if response.status() == 401 {
-        // Redirect to Google OAuth login
-        let _ = web_sys::window().map(|w| {
-            w.location().set_href("/auth/google").ok();
-        });
         return Err("Not authenticated".to_string());
     }
     

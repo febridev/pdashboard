@@ -6,20 +6,51 @@ use crate::models::task::{Task, TaskStatus};
 pub fn KanbanBoard() -> Element {
     let mut tasks_data = use_signal(|| Vec::new());
     let mut loading = use_signal(|| true);
+    let mut authenticated = use_signal(|| false);
     let mut error = use_signal(|| Option::<String>::None);
 
     use_future(move || async move {
         match fetch_tasks().await {
             Ok(response) => {
                 tasks_data.set(response.tasks);
+                authenticated.set(true);
                 loading.set(false);
             }
             Err(e) => {
-                error.set(Some(e));
+                if e.contains("Not authenticated") {
+                    authenticated.set(false);
+                } else {
+                    error.set(Some(e));
+                }
                 loading.set(false);
             }
         }
     });
+
+    // Show login button if not authenticated
+    if !authenticated() && !loading() {
+        return rsx! {
+            div {
+                style: "display: flex; justify-content: center; align-items: center; min-height: 400px;",
+                div {
+                    style: "background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;",
+                    h2 { 
+                        style: "color: #1f2937; margin-bottom: 20px;",
+                        "Personal Dashboard" 
+                    }
+                    p { 
+                        style: "color: #6b7280; margin-bottom: 30px;",
+                        "Please sign in to view your tasks" 
+                    }
+                    a {
+                        href: "/auth/google",
+                        style: "background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;",
+                        "Sign in with Google"
+                    }
+                }
+            }
+        };
+    }
 
     // Collect all pending tasks with document/header context
     let pending_items: Vec<(String, String, Task)> = {
@@ -57,61 +88,81 @@ pub fn KanbanBoard() -> Element {
 
     rsx! {
         div {
-            class: "kanban-board",
-            style: "display: flex; gap: 20px; padding: 20px;",
-            
-            // Pending column
+            // User status bar
             div {
-                class: "kanban-column",
-                style: "flex: 1; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
-                h2 { 
-                    style: "color: #1f2937; margin-bottom: 15px;",
-                    "Pending ({pending_items.len()})" 
+                style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #ffffff; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
+                div {
+                    style: "display: flex; align-items: center; gap: 8px;",
+                    div {
+                        style: "width: 8px; height: 8px; background: #10b981; border-radius: 50%;",
+                    }
+                    span {
+                        style: "color: #6b7280; font-size: 14px;",
+                        "Signed in"
+                    }
                 }
-                if loading() {
-                    p { "Loading..." }
-                } else if let Some(err) = error() {
-                    p { style: "color: #6b7280;", "Redirecting to login..." }
-                } else {
-                    for (doc_title, header, task) in pending_items.iter() {
-                        div {
-                            key: "{doc_title}-{header}-{task.text}",
-                            style: "background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #f59e0b;",
-                            div { 
-                                style: "font-size: 11px; color: #6b7280; margin-bottom: 4px;",
-                                "{doc_title} › {header}"
-                            }
+                a {
+                    href: "/auth/logout",
+                    style: "color: #6b7280; font-size: 14px; text-decoration: none;",
+                    "Sign out"
+                }
+            }
+
+            div {
+                class: "kanban-board",
+                style: "display: flex; gap: 20px; padding: 20px;",
+                
+                // Pending column
+                div {
+                    class: "kanban-column",
+                    style: "flex: 1; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
+                    h2 { 
+                        style: "color: #1f2937; margin-bottom: 15px;",
+                        "Pending ({pending_items.len()})" 
+                    }
+                    if loading() {
+                        p { "Loading..." }
+                    } else {
+                        for (doc_title, header, task) in pending_items.iter() {
                             div {
-                                style: "color: #1f2937;",
-                                "{task.text}"
+                                key: "{doc_title}-{header}-{task.text}",
+                                style: "background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #f59e0b;",
+                                div { 
+                                    style: "font-size: 11px; color: #6b7280; margin-bottom: 4px;",
+                                    "{doc_title} › {header}"
+                                }
+                                div {
+                                    style: "color: #1f2937;",
+                                    "{task.text}"
+                                }
                             }
                         }
                     }
                 }
-            }
-            
-            // Completed column
-            div {
-                class: "kanban-column",
-                style: "flex: 1; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
-                h2 { 
-                    style: "color: #1f2937; margin-bottom: 15px;",
-                    "Completed ({completed_items.len()})" 
-                }
-                if loading() {
-                    p { "Loading..." }
-                } else {
-                    for (doc_title, header, task) in completed_items.iter() {
-                        div {
-                            key: "{doc_title}-{header}-{task.text}",
-                            style: "background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #10b981;",
-                            div { 
-                                style: "font-size: 11px; color: #6b7280; margin-bottom: 4px;",
-                                "{doc_title} › {header}"
-                            }
+                
+                // Completed column
+                div {
+                    class: "kanban-column",
+                    style: "flex: 1; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
+                    h2 { 
+                        style: "color: #1f2937; margin-bottom: 15px;",
+                        "Completed ({completed_items.len()})" 
+                    }
+                    if loading() {
+                        p { "Loading..." }
+                    } else {
+                        for (doc_title, header, task) in completed_items.iter() {
                             div {
-                                style: "color: #6b7280; text-decoration: line-through;",
-                                "{task.text}"
+                                key: "{doc_title}-{header}-{task.text}",
+                                style: "background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #10b981;",
+                                div { 
+                                    style: "font-size: 11px; color: #6b7280; margin-bottom: 4px;",
+                                    "{doc_title} › {header}"
+                                }
+                                div {
+                                    style: "color: #6b7280; text-decoration: line-through;",
+                                    "{task.text}"
+                                }
                             }
                         }
                     }

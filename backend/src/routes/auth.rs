@@ -25,15 +25,24 @@ impl axum::extract::FromRequestParts<AppState> for RequireAuth {
         parts: &mut axum::http::request::Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let jar = axum_extra::extract::CookieJar::from_request_parts(parts, state)
-            .await
-            .map_err(|_| (StatusCode::UNAUTHORIZED, "Missing cookies"))?;
+        // Extract session cookie directly from headers
+        let cookie_header = parts
+            .headers
+            .get(axum::http::header::COOKIE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
 
-        let session_cookie = jar
-            .get("session")
+        let session_id = cookie_header
+            .split(';')
+            .find_map(|c| {
+                let c = c.trim();
+                if c.starts_with("session=") {
+                    Some(c.trim_start_matches("session="))
+                } else {
+                    None
+                }
+            })
             .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated"))?;
-
-        let session_id = session_cookie.value();
 
         // Validate session exists in server-side store
         let sessions = state.sessions.lock().unwrap();
@@ -109,7 +118,10 @@ pub async fn google_callback(
         .exchange_code(AuthorizationCode::new(params.code))
         .request_async(oauth2::reqwest::async_http_client)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            tracing::error!("Token exchange failed: {}", e);
+            e.to_string()
+        })?;
 
     let access_token = token_result.access_token().secret().clone();
 
@@ -131,6 +143,8 @@ pub async fn google_callback(
             },
         );
     }
+
+    tracing::info!("Session created, session_id={}", session_id);
 
     // Set session cookie with ID (not raw token)
     let session_cookie = Cookie::build(("session", session_id))

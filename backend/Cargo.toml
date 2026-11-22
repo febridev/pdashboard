@@ -14,3 +14,12 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
+
+[lib]
+name = "pdashboard_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pdashboard-server"
+path = "src/main.rs"
+

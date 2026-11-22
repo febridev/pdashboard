@@ -2,14 +2,14 @@
 # Before `docker compose up`: create a .env in this directory from
 # backend/.env.example with real secrets (never committed).
 # The frontend proxies /api/* and /auth/* to the backend, so the browser only
-# needs http://<vps>:8080; set GOOGLE_REDIRECT_URI accordingly, e.g.
-# http://<vps>:8080/auth/google/callback.
+# needs http://<vps>:8081; set GOOGLE_REDIRECT_URI accordingly, e.g.
+# http://<vps>:8081/auth/google/callback.
 
 services:
   backend:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - .env
     restart: unless-stopped
@@ -17,7 +17,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "8080:80"
+      - "8081:80"
     depends_on:
       - backend
     restart: unless-stopped

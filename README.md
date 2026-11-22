@@ -54,6 +54,9 @@ Edit `.env` with your credentials:
 # Outline API
 OUTLINE_API_URL=https://your-outline-instance.com/api
 OUTLINE_API_KEY=ol_api_your_key_here
+# Optional: Specific document ID to fetch tasks from (UUID from document URL)
+# If not set, fetches from all documents with tasks
+OUTLINE_TASK_DOCUMENT_ID=your-document-uuid-here
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -67,6 +70,10 @@ SESSION_SECRET=generate-a-random-secret-string
 PORT=3000
 HOST=0.0.0.0
 ```
+
+To get the document UUID, open the document in Outline and look at the URL:
+- URL: `https://notes.febridev.me/doc/task-dX8WroOpOn`
+- The UUID is available via the API or in the document properties
 
 Generate a strong session secret, e.g. `openssl rand -hex 32`.
 

@@ -1,1 +1,12 @@
+# Secrets — real env files are never committed (.env.example stays tracked)
+.env
+
+# Rust build artifacts (backend/ and frontend/)
+target/
+
+# SDD working files
 .superpowers/
+
+# Logs and OS cruft
+*.log
+.DS_Store

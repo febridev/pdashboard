@@ -18,23 +18,30 @@ pub struct AuthCallback {
 pub struct RequireAuth;
 
 #[axum::async_trait]
-impl<S> axum::extract::FromRequestParts<S> for RequireAuth
-where
-    S: Send + Sync,
-{
+impl axum::extract::FromRequestParts<AppState> for RequireAuth {
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        _state: &S,
+        state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let jar = axum_extra::extract::CookieJar::from_request_parts(parts, _state)
+        let jar = axum_extra::extract::CookieJar::from_request_parts(parts, state)
             .await
             .map_err(|_| (StatusCode::UNAUTHORIZED, "Missing cookies"))?;
 
-        jar.get("session")
-            .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated"))
-            .map(|_| RequireAuth)
+        let session_cookie = jar
+            .get("session")
+            .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated"))?;
+
+        let session_id = session_cookie.value();
+
+        // Validate session exists in server-side store
+        let sessions = state.sessions.lock().unwrap();
+        if sessions.contains_key(session_id) {
+            Ok(RequireAuth)
+        } else {
+            Err((StatusCode::UNAUTHORIZED, "Invalid session"))
+        }
     }
 }
 

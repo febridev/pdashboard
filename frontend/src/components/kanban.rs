@@ -6,12 +6,19 @@ use crate::models::task::{Task, TaskStatus};
 pub fn KanbanBoard() -> Element {
     let mut tasks_data = use_signal(|| Vec::new());
     let mut loading = use_signal(|| true);
+    let mut error = use_signal(|| Option::<String>::None);
 
     use_future(move || async move {
-        if let Ok(response) = fetch_tasks().await {
-            tasks_data.set(response.tasks);
+        match fetch_tasks().await {
+            Ok(response) => {
+                tasks_data.set(response.tasks);
+                loading.set(false);
+            }
+            Err(e) => {
+                error.set(Some(e));
+                loading.set(false);
+            }
         }
-        loading.set(false);
     });
 
     // Collect all pending tasks with document/header context
@@ -63,6 +70,8 @@ pub fn KanbanBoard() -> Element {
                 }
                 if loading() {
                     p { "Loading..." }
+                } else if let Some(err) = error() {
+                    p { style: "color: #6b7280;", "Redirecting to login..." }
                 } else {
                     for (doc_title, header, task) in pending_items.iter() {
                         div {

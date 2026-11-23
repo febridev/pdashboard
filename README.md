@@ -6,6 +6,7 @@ A personal dashboard built with Rust (Axum) and React that displays tasks from O
 
 - Kanban board with Pending and Completed columns
 - Tasks fetched from Outline API and grouped by document/header
+- Live updates: the board refreshes from Outline within the poll interval via SSE, no manual reload
 - Google OAuth authentication
 - Docker deployment ready
 
@@ -62,6 +63,10 @@ OUTLINE_TASK_DOCUMENT_ID=your-document-uuid-here
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
+
+# How often (seconds) the backend checks Outline for task changes.
+# Live updates reach the browser via SSE within this window.
+TASK_POLL_INTERVAL_SECS=60
 
 # Security
 SESSION_SECRET=generate-a-random-secret-string
@@ -130,6 +135,16 @@ server {
 
 Because the frontend container already proxies `/api/` and `/auth/` to the backend, proxying everything to `http://localhost:8081` is enough as well; the split above just routes API traffic directly.
 
+The backend sends `x-accel-buffering: no` on `/api/tasks/stream`, so nginx-based proxies skip response buffering for the stream automatically. For other proxies (or to be explicit), give the stream location the same treatment as the compose nginx:
+
+```nginx
+location = /api/tasks/stream {
+    proxy_pass http://localhost:3001;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+}
+```
+
 Update `GOOGLE_REDIRECT_URI` in `.env` to match your domain (e.g. `https://dashboard.yourdomain.com/auth/google/callback`).
 
 ## Local Development
@@ -151,7 +166,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server runs at `http://localhost:5173` and proxies `/api` and `/auth` to the backend on `:3000`, so run `cargo run` in `backend/` alongside it.
+The Vite dev server runs at `http://localhost:5173` and proxies `/api` and `/auth` to the backend on `:3000`, so run `cargo run` in `backend/` alongside it. Its dev proxy streams SSE (`/api/tasks/stream`) without extra configuration, so live updates work in dev the same as in Docker.
 
 For Google login in dev:
 1. Create a gitignored `backend/.env` as a full copy of the root `.env` with only `GOOGLE_REDIRECT_URI` changed to `http://localhost:5173/auth/google/callback`. Dotenv loads exactly one file, so the copy must contain every variable; it does not merge with the root `.env`.

@@ -15,6 +15,7 @@ pub struct Task {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskGroup {
     pub header: String,
+    pub path: Vec<String>,
     pub tasks: Vec<Task>,
 }
 

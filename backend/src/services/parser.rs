@@ -2,7 +2,7 @@ use crate::models::task::{Task, TaskGroup, TaskStatus};
 
 pub fn parse_tasks_from_markdown(markdown: &str) -> Vec<TaskGroup> {
     let mut groups: Vec<TaskGroup> = Vec::new();
-    let mut current_header = String::new();
+    let mut heading_stack: Vec<(usize, String)> = Vec::new();
     let mut current_tasks: Vec<Task> = Vec::new();
 
     for line in markdown.lines() {
@@ -11,16 +11,22 @@ pub fn parse_tasks_from_markdown(markdown: &str) -> Vec<TaskGroup> {
         // Check for header (H1-H6)
         if trimmed.starts_with('#') {
             // Save previous group if exists
-            if !current_tasks.is_empty() && !current_header.is_empty() {
+            if !current_tasks.is_empty() && !heading_stack.is_empty() {
+                let (header, path) = current_heading(&heading_stack);
                 groups.push(TaskGroup {
-                    header: current_header.clone(),
+                    header,
+                    path,
                     tasks: current_tasks.clone(),
                 });
                 current_tasks.clear();
             }
 
-            // Extract header text (remove # symbols)
-            current_header = trimmed.trim_start_matches('#').trim().to_string();
+            // count leading '#' as level, rest is the heading text
+            let level = trimmed.chars().take_while(|c| *c == '#').count();
+            let text = trimmed.trim_start_matches('#').trim().to_string();
+            // pop same-or-shallower headings, then push
+            heading_stack.retain(|(lvl, _)| *lvl < level);
+            heading_stack.push((level, text));
         }
         // Check for task items
         else if trimmed.starts_with("- [ ]")
@@ -48,12 +54,22 @@ pub fn parse_tasks_from_markdown(markdown: &str) -> Vec<TaskGroup> {
     }
 
     // Add final group
-    if !current_tasks.is_empty() && !current_header.is_empty() {
+    if !current_tasks.is_empty() && !heading_stack.is_empty() {
+        let (header, path) = current_heading(&heading_stack);
         groups.push(TaskGroup {
-            header: current_header,
+            header,
+            path,
             tasks: current_tasks,
         });
     }
 
     groups
+}
+
+// Header is the immediate heading; path is the full stack root→leaf.
+fn current_heading(heading_stack: &[(usize, String)]) -> (String, Vec<String>) {
+    (
+        heading_stack.last().unwrap().1.clone(),
+        heading_stack.iter().map(|(_, t)| t.clone()).collect(),
+    )
 }

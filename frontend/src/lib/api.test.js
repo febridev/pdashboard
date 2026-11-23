@@ -30,7 +30,7 @@ describe('parseTasksResponse', () => {
     expect(() => parseTasksResponse(bad)).toThrow(ApiError)
   })
   it('rejects an unknown status', () => {
-    expect(() => parseTasksResponse({ tasks: [{ document_title: 'D', groups: [{ header: 'H', tasks: [{ text: 'T', status: 'done' }] }] }] })).toThrow(ApiError)
+    expect(() => parseTasksResponse({ tasks: [{ document_title: 'D', groups: [{ header: 'H', path: [], tasks: [{ text: 'T', status: 'done' }] }] }] })).toThrow(ApiError)
   })
 })
 

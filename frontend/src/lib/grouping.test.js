@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupPending, splitCompleted } from './grouping'
+import { groupCompleted, groupPending, splitCompleted } from './grouping'
 
 const nestedFixture = {
   tasks: [
@@ -63,6 +63,42 @@ describe('groupPending', () => {
 
   it('returns [] for an empty response', () => {
     expect(groupPending({ tasks: [] })).toEqual([])
+  })
+})
+
+describe('groupCompleted', () => {
+  it('groups completed by name with one unlabeled subgroup, document order within', () => {
+    const groups = groupCompleted(nestedFixture)
+    expect(groups).toEqual([
+      { name: 'smthk-amdb', subgroups: [{ label: null, tasks: [
+        { docTitle: 'task', header: '2026-11-23', text: 'do Y', status: 'Completed', path: ['smthk-amdb', '2026-11-23'] },
+      ] }] },
+    ])
+  })
+
+  it('merges duplicate names across docs and keeps document order', () => {
+    const doc = {
+      tasks: [
+        { document_title: 't1', groups: [
+          { header: 'a', path: ['a'], tasks: [{ text: 'c1', status: 'Completed' }] },
+          { header: 'b', path: ['b', 'd1'], tasks: [{ text: 'c2', status: 'Completed' }, { text: 'p1', status: 'Pending' }] },
+        ] },
+        { document_title: 't2', groups: [
+          { header: 'a', path: ['a', 'd2'], tasks: [{ text: 'c3', status: 'Completed' }] },
+        ] },
+      ],
+    }
+    const groups = groupCompleted(doc)
+    expect(groups.map((g) => g.name)).toEqual(['a', 'b'])
+    expect(groups[0].subgroups).toEqual([{ label: null, tasks: [
+      { docTitle: 't1', header: 'a', text: 'c1', status: 'Completed', path: ['a'] },
+      { docTitle: 't2', header: 'a', text: 'c3', status: 'Completed', path: ['a', 'd2'] },
+    ] }])
+    expect(groups[1].subgroups[0].tasks.map((t) => t.text)).toEqual(['c2']) // pending p1 excluded
+  })
+
+  it('returns [] for an empty response', () => {
+    expect(groupCompleted({ tasks: [] })).toEqual([])
   })
 })
 

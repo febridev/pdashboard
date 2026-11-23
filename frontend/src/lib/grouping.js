@@ -61,6 +61,42 @@ export function groupPending(tasksResponse) {
 }
 
 /**
+ * Groups completed tasks into a name → single unlabeled subgroup hierarchy.
+ * Name = path[0]; sub-group label = null (one subgroup per name, holding all its completed tasks).
+ * Name groups keyed by first appearance (merged across docs by name string); tasks in document
+ * order within each subgroup. No date logic — completed tasks are not date-sorted.
+ *
+ * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, path: string[], tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse
+ * @returns {Array<{ name: string, subgroups: Array<{ label: null, tasks: TaskRef[] }> }>}
+ */
+export function groupCompleted(tasksResponse) {
+  const byName = new Map()
+
+  for (const doc of tasksResponse.tasks) {
+    for (const group of doc.groups) {
+      for (const task of group.tasks) {
+        if (task.status !== 'Completed') continue
+
+        const name = group.path[0]
+
+        if (!byName.has(name)) {
+          byName.set(name, [])
+        }
+        byName.get(name).push({
+          docTitle: doc.document_title,
+          header: group.header,
+          text: task.text,
+          status: task.status,
+          path: group.path,
+        })
+      }
+    }
+  }
+
+  return Array.from(byName, ([name, tasks]) => ({ name, subgroups: [{ label: null, tasks }] }))
+}
+
+/**
  * Flattens completed tasks into a single list, in document → group → task order.
  *
  * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, path: string[], tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse

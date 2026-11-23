@@ -4,7 +4,10 @@
 use crate::models::document::Document;
 use crate::models::response::TasksResponse;
 use crate::models::task::{DocumentTasks, TaskGroup};
+use crate::services::outline::OutlineClient;
+use crate::services::parser::parse_tasks_from_markdown;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 use tokio::sync::watch;
 
 /// Broadcast channel for task snapshots. Holds the latest snapshot so a
@@ -70,4 +73,82 @@ pub fn rebuild_snapshot(cache: &mut DocumentCache, listed: &[Document]) -> Tasks
         .collect();
 
     TasksResponse { tasks }
+}
+
+/// Spawn the background poller. The first refresh runs immediately at
+/// startup (warming the snapshot before any browser connects), then
+/// every `interval`. An Outline failure keeps the last published snapshot.
+pub fn spawn_poller(outline: OutlineClient, events: std::sync::Arc<TaskEvents>, interval: Duration) {
+    tokio::spawn(async move {
+        let mut cache: DocumentCache = HashMap::new();
+        loop {
+            if let Err(e) = refresh_once(&outline, &events, &mut cache).await {
+                tracing::warn!("live: refresh failed, keeping last snapshot: {}", e);
+            }
+            tokio::time::sleep(interval).await;
+        }
+    });
+}
+
+async fn refresh_once(
+    outline: &OutlineClient,
+    events: &TaskEvents,
+    cache: &mut DocumentCache,
+) -> Result<(), reqwest::Error> {
+    if let Some(doc_id) = outline.config.outline_task_document_id.clone() {
+        let doc = outline.get_document(&doc_id).await?;
+        if needs_refetch(cache, &doc) {
+            let groups = doc
+                .text
+                .as_deref()
+                .map(parse_tasks_from_markdown)
+                .unwrap_or_default();
+            cache.insert(
+                doc.id.clone(),
+                CachedDoc {
+                    updated_at: doc.updated_at.clone(),
+                    title: doc.title.clone(),
+                    groups,
+                },
+            );
+            events.publish(rebuild_snapshot(cache, std::slice::from_ref(&doc)));
+            tracing::info!("live: published snapshot for document {}", doc_id);
+        }
+    } else {
+        let docs = outline.list_documents().await?;
+        let relevant: Vec<Document> = docs
+            .into_iter()
+            .filter(|d| d.tasks.as_ref().map_or(false, |t| t.total > 0))
+            .collect();
+        let listed_ids: HashSet<&String> = relevant.iter().map(|d| &d.id).collect();
+        let cached_ids: HashSet<&String> = cache.keys().collect();
+        if listed_ids != cached_ids || relevant.iter().any(|d| needs_refetch(cache, d)) {
+            for d in &relevant {
+                if !needs_refetch(cache, d) {
+                    continue;
+                }
+                match outline.get_document(&d.id).await {
+                    Ok(full) => {
+                        let groups = full
+                            .text
+                            .as_deref()
+                            .map(parse_tasks_from_markdown)
+                            .unwrap_or_default();
+                        cache.insert(
+                            full.id.clone(),
+                            CachedDoc {
+                                updated_at: full.updated_at.clone(),
+                                title: full.title.clone(),
+                                groups,
+                            },
+                        );
+                    }
+                    Err(e) => tracing::warn!("live: failed to fetch {}: {}", d.id, e), // keep prior cache entry
+                }
+            }
+            events.publish(rebuild_snapshot(cache, &relevant));
+            tracing::info!("live: published snapshot ({} documents)", relevant.len());
+        }
+    }
+    Ok(())
 }

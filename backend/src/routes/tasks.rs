@@ -2,6 +2,7 @@ use crate::models::response::TasksResponse;
 use crate::models::task::DocumentTasks;
 use crate::routes::auth::RequireAuth;
 use crate::services::auth::AuthService;
+use crate::services::live::TaskEvents;
 use crate::services::outline::OutlineClient;
 use crate::services::parser::parse_tasks_from_markdown;
 use axum::extract::State;
@@ -16,6 +17,7 @@ pub struct AppState {
     pub auth_service: Arc<AuthService>,
     pub csrf_states: Arc<Mutex<HashMap<String, Instant>>>,
     pub sessions: Arc<Mutex<HashMap<String, SessionData>>>,
+    pub task_events: Arc<TaskEvents>,
 }
 
 #[derive(Clone)]

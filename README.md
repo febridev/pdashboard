@@ -141,7 +141,7 @@ cd backend
 cargo run
 ```
 
-The backend reads its configuration from the process environment; anything not set is looked up in a `.env` file found by walking up from the current directory (dotenv), so the single root `.env` from the setup steps works here too (a `backend/.env` overrides it). Under docker compose, variables come from the root `.env` via `env_file`. Run tests with `cargo test`.
+The backend reads its configuration from the process environment; anything not set is looked up in a `.env` file found by walking up from the current directory (dotenv), so the single root `.env` from the setup steps works here too (only one file is loaded: a `backend/.env`, if present, replaces the root `.env` entirely). Under docker compose, variables come from the root `.env` via `env_file`. Run tests with `cargo test`.
 
 ### Frontend
 
@@ -154,7 +154,7 @@ npm run dev
 The Vite dev server runs at `http://localhost:5173` and proxies `/api` and `/auth` to the backend on `:3000`, so run `cargo run` in `backend/` alongside it.
 
 For Google login in dev:
-1. Create a gitignored `backend/.env` containing `GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback` (it overrides the root `.env` for `cargo run`).
+1. Create a gitignored `backend/.env` as a full copy of the root `.env` with only `GOOGLE_REDIRECT_URI` changed to `http://localhost:5173/auth/google/callback`. Dotenv loads exactly one file, so the copy must contain every variable; it does not merge with the root `.env`.
 2. Register `http://localhost:5173/auth/google/callback` in the Google console alongside the `8081` one.
 3. Run `cargo run` in `backend/`, then open `http://localhost:5173`.
 

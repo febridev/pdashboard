@@ -45,4 +45,8 @@ describe('fetchTasks', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
     await expect(fetchTasks()).rejects.toMatchObject({ kind: 'other', message: 'Failed to fetch' })
   })
+  it('maps an OK response with unparseable body to other with Invalid JSON response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.reject(new SyntaxError('Unexpected token < in JSON')) }))
+    await expect(fetchTasks()).rejects.toMatchObject({ kind: 'other', message: 'Invalid JSON response' })
+  })
 })

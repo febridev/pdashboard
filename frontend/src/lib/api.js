@@ -71,5 +71,11 @@ export async function fetchTasks() {
   }
   if (res.status === 401) throw new ApiError('unauthorized', 'Not authenticated')
   if (!res.ok) throw new ApiError('other', `HTTP ${res.status}`)
-  return parseTasksResponse(await res.json())
+  let raw
+  try {
+    raw = await res.json()
+  } catch {
+    throw new ApiError('other', 'Invalid JSON response')
+  }
+  return parseTasksResponse(raw)
 }

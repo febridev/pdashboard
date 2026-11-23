@@ -54,7 +54,7 @@ Expected: `preserved`
 git rm -r --quiet frontend/Cargo.toml frontend/Cargo.lock frontend/Dioxus.toml frontend/src frontend/index.html frontend/.gitignore frontend/.dockerignore
 rm -rf frontend/target
 ```
-Expected: `ls frontend/` shows only `nginx.conf`.
+Expected: `ls frontend/` shows `nginx.conf` and the old `Dockerfile` (Task 7 rewrites it in place).
 
 - [ ] **Step 3: Commit**
 

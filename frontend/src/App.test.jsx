@@ -1,9 +1,12 @@
 import { it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
+import { FakeEventSource, resetFakeEventSources } from '@/test/fakeEventSource'
 import App from './App'
 
 afterEach(cleanup)
 beforeEach(() => vi.unstubAllGlobals())
+// Must be registered after the unstub hook above so the stub survives it.
+beforeEach(() => { vi.stubGlobal('EventSource', FakeEventSource); resetFakeEventSources() })
 
 const task3Fixture = {
   tasks: [
@@ -22,6 +25,27 @@ const dupFixture = {
       { header: 'Home', path: ['Home'], tasks: [
         { text: 'Buy milk', status: 'Pending' },
         { text: 'Buy milk', status: 'Pending' },
+      ] },
+    ] },
+  ],
+}
+
+const onePending = {
+  tasks: [
+    { document_title: 'Tasks', groups: [
+      { header: 'Home', path: ['Home'], tasks: [
+        { text: 'Buy milk', status: 'Pending' },
+      ] },
+    ] },
+  ],
+}
+
+const twoPending = {
+  tasks: [
+    { document_title: 'Tasks', groups: [
+      { header: 'Home', path: ['Home'], tasks: [
+        { text: 'Buy milk', status: 'Pending' },
+        { text: 'Pay rent', status: 'Pending' },
       ] },
     ] },
   ],
@@ -62,6 +86,21 @@ it('renders duplicate identical tasks without key collisions', async () => {
   render(<App />)
   expect(await screen.findByText('Pending (2)')).toBeInTheDocument()
   expect(screen.getAllByText('Buy milk')).toHaveLength(2)
+})
+
+it('opens no stream when the fetch is unauthorized', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }))
+  render(<App />)
+  await screen.findByText('Please sign in to view your tasks')
+  expect(FakeEventSource.instances).toHaveLength(0)
+})
+
+it('updates the board when the stream pushes new tasks', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(onePending) }))
+  render(<App />)
+  expect(await screen.findByText('Pending (1)')).toBeInTheDocument()
+  FakeEventSource.instances.at(-1).dispatch('tasks', JSON.stringify(twoPending))
+  expect(await screen.findByText('Pending (2)')).toBeInTheDocument()
 })
 
 it('renders an empty board when tasks is empty', async () => {

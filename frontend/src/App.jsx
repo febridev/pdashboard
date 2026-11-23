@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GroupedColumn from '@/components/GroupedColumn'
 import { ApiError, fetchTasks } from '@/lib/api'
+import { subscribeTaskStream } from '@/lib/stream'
 import { groupCompleted, groupPending } from '@/lib/grouping'
 
 function StatusBar() {
@@ -28,8 +29,12 @@ export default function App() {
   const [state, setState] = useState({ status: 'loading', message: '', tasks: null })
 
   useEffect(() => {
+    let unsubscribe
     fetchTasks()
-      .then((tasks) => setState({ status: 'ok', message: '', tasks }))
+      .then((tasks) => {
+        setState({ status: 'ok', message: '', tasks })
+        unsubscribe = subscribeTaskStream((tasks) => setState({ status: 'ok', message: '', tasks }))
+      })
       .catch((err) => {
         if (err instanceof ApiError && err.kind === 'unauthorized') {
           setState({ status: 'unauthorized', message: '', tasks: null })
@@ -37,6 +42,7 @@ export default function App() {
           setState({ status: 'error', message: err.message, tasks: null })
         }
       })
+    return () => unsubscribe?.()
   }, [])
 
   const board = state.status === 'ok'

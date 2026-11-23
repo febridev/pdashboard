@@ -4,6 +4,7 @@ use crate::routes::auth::RequireAuth;
 use crate::services::auth::AuthService;
 use crate::services::live::TaskEvents;
 use crate::services::outline::OutlineClient;
+use crate::services::outline::OutlineError;
 use crate::services::parser::parse_tasks_from_markdown;
 use axum::extract::State;
 use axum::http::{HeaderName, HeaderValue};
@@ -50,6 +51,9 @@ pub async fn get_tasks(
                     }
                 }
             }
+            Err(OutlineError::NotFound) => {
+                tracing::info!("Document {} is gone", doc_id);
+            }
             Err(e) => {
                 tracing::error!("Failed to fetch document {}: {}", doc_id, e);
             }
@@ -72,6 +76,12 @@ pub async fn get_tasks(
                                             });
                                         }
                                     }
+                                }
+                                Err(OutlineError::NotFound) => {
+                                    tracing::warn!(
+                                        "Document {} listed but not found",
+                                        doc_summary.id
+                                    );
                                 }
                                 Err(e) => {
                                     tracing::warn!(

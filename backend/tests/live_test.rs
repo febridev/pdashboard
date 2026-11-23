@@ -61,6 +61,39 @@ fn task_events_publish_makes_snapshot_visible_to_subscribers() {
     assert!(rx.borrow_and_update().is_some());       // latest value, even with zero prior receivers
 }
 
+// --- Deleted-document classification (final review fix) ---
+
+use pdashboard_backend::services::outline::{DocumentEnvelope, OutlineError, classify_envelope};
+
+#[test]
+fn deleted_document_error_classifies_as_not_found() {
+    let env: DocumentEnvelope = serde_json::from_value(serde_json::json!({
+        "ok": false, "error": "not_found", "message": "document not found", "status": 404
+    })).unwrap();
+    assert!(matches!(classify_envelope(&env), Err(OutlineError::NotFound)));
+}
+
+#[test]
+fn document_envelope_with_data_classifies_as_ok() {
+    let env: DocumentEnvelope = serde_json::from_value(serde_json::json!({
+        "ok": true,
+        "data": { "id": "d1", "title": "Tasks", "text": "- [ ] a", "tasks": { "completed": 0, "total": 1 }, "updatedAt": "t1" }
+    })).unwrap();
+    let doc = classify_envelope(&env).expect("envelope with data must be Ok");
+    assert_eq!(doc.id, "d1");
+}
+
+#[test]
+fn other_api_error_classifies_as_api_error() {
+    let env: DocumentEnvelope = serde_json::from_value(serde_json::json!({
+        "ok": false, "error": "rate_limit", "message": "too many requests"
+    })).unwrap();
+    match classify_envelope(&env) {
+        Err(OutlineError::Api(code)) => assert!(code.contains("rate_limit")),
+        other => panic!("expected Api error, got {:?}", other),
+    }
+}
+
 #[test]
 fn document_parses_camel_case_updated_at() {
     let raw = serde_json::json!({

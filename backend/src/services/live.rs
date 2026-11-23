@@ -4,7 +4,7 @@
 use crate::models::document::Document;
 use crate::models::response::TasksResponse;
 use crate::models::task::{DocumentTasks, TaskGroup};
-use crate::services::outline::OutlineClient;
+use crate::services::outline::{OutlineClient, OutlineError};
 use crate::services::parser::parse_tasks_from_markdown;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -94,9 +94,24 @@ async fn refresh_once(
     outline: &OutlineClient,
     events: &TaskEvents,
     cache: &mut DocumentCache,
-) -> Result<(), reqwest::Error> {
+) -> Result<(), OutlineError> {
     if let Some(doc_id) = outline.config.outline_task_document_id.clone() {
-        let doc = outline.get_document(&doc_id).await?;
+        let doc = match outline.get_document(&doc_id).await {
+            Ok(doc) => doc,
+            Err(OutlineError::NotFound) => {
+                // The configured document was deleted: clear the board
+                // instead of showing stale tasks behind live pings. The
+                // cache guard makes the empty publish a one-time event;
+                // a restored document publishes normally again.
+                if !cache.is_empty() {
+                    cache.clear();
+                    events.publish(TasksResponse { tasks: Vec::new() });
+                    tracing::info!("live: document {} is gone, published empty snapshot", doc_id);
+                }
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
         if needs_refetch(cache, &doc) {
             let groups = doc
                 .text
@@ -115,7 +130,7 @@ async fn refresh_once(
             tracing::info!("live: published snapshot for document {}", doc_id);
         }
     } else {
-        let docs = outline.list_documents().await?;
+        let docs = outline.list_documents().await.map_err(OutlineError::Http)?;
         let relevant: Vec<Document> = docs
             .into_iter()
             .filter(|d| d.tasks.as_ref().map_or(false, |t| t.total > 0))
@@ -142,6 +157,9 @@ async fn refresh_once(
                                 groups,
                             },
                         );
+                    }
+                    Err(OutlineError::NotFound) => {
+                        tracing::warn!("live: document {} disappeared mid-refresh", d.id);
                     }
                     Err(e) => tracing::warn!("live: failed to fetch {}: {}", d.id, e), // keep prior cache entry
                 }

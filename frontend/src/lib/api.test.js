@@ -4,7 +4,7 @@ import { ApiError, fetchTasks, parseTasksResponse } from './api'
 const fixture = {
   tasks: [
     { document_title: 'Tasks', groups: [
-      { header: 'Home', tasks: [
+      { header: 'Home', path: ['Home'], tasks: [
         { text: 'Buy milk', status: 'Pending' },
         { text: 'Pay rent', status: 'Completed' },
       ] },
@@ -21,6 +21,13 @@ describe('parseTasksResponse', () => {
   })
   it('rejects a doc without document_title', () => {
     expect(() => parseTasksResponse({ tasks: [{ groups: [] }] })).toThrow(ApiError)
+  })
+  it('rejects a group without path', () => {
+    expect(() => parseTasksResponse({ tasks: [{ document_title: 'D', groups: [{ header: 'H', tasks: [] }] }] })).toThrow(ApiError)
+  })
+  it('rejects a non-string path element', () => {
+    const bad = { tasks: [{ document_title: 'D', groups: [{ header: 'H', path: ['ok', 7], tasks: [] }] }] }
+    expect(() => parseTasksResponse(bad)).toThrow(ApiError)
   })
   it('rejects an unknown status', () => {
     expect(() => parseTasksResponse({ tasks: [{ document_title: 'D', groups: [{ header: 'H', tasks: [{ text: 'T', status: 'done' }] }] }] })).toThrow(ApiError)

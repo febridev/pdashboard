@@ -47,6 +47,7 @@ export function parseTasksResponse(raw) {
           checkObject(group, groupPath)
           return {
             header: checkString(group.header, `${groupPath}.header`),
+            path: checkArray(group.path, `${groupPath}.path`).map((p, l) => checkString(p, `${groupPath}.path[${l}]`)),
             tasks: checkArray(group.tasks, `${groupPath}.tasks`).map((task, k) => {
               const taskPath = `${groupPath}.tasks[${k}]`
               checkObject(task, taskPath)

@@ -1,5 +1,5 @@
 import { it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import KanbanColumn from './KanbanColumn'
 
 afterEach(cleanup)
@@ -9,6 +9,9 @@ const pending = [
   { docTitle: 'Tasks', header: 'Home', text: '<script>alert(1)</script>', status: 'Pending' },
 ]
 const completed = [{ docTitle: 'Tasks', header: 'Home', text: 'Pay rent', status: 'Completed' }]
+
+const doneTasks = (n) =>
+  Array.from({ length: n }, (_, i) => ({ docTitle: 'Tasks', header: 'Home', text: `Task ${i + 1}`, status: 'Completed' }))
 
 it('shows the column title with count', () => {
   render(<KanbanColumn title="Pending" accent="amber" tasks={pending} loading={false} />)
@@ -57,4 +60,34 @@ it('renders completed tasks with line-through styling', () => {
 it('renders an empty column with zero count and no cards', () => {
   render(<KanbanColumn title="Pending" accent="amber" tasks={[]} loading={false} />)
   expect(screen.getByText('Pending (0)')).toBeInTheDocument()
+})
+
+it('caps a limited column at the limit and reveals the rest on Load more', () => {
+  render(<KanbanColumn title="Completed" accent="green" tasks={doneTasks(12)} loading={false} limit={10} />)
+  expect(screen.getByText('Completed (12)')).toBeInTheDocument() // header keeps the true total
+  expect(screen.getByText('Task 10')).toBeInTheDocument()
+  expect(screen.queryByText('Task 11')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Load more (2)' }))
+  expect(screen.getByText('Task 12')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+})
+
+it('reveals limit-sized pages and updates the hidden count', () => {
+  render(<KanbanColumn title="Completed" accent="green" tasks={doneTasks(23)} loading={false} limit={10} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Load more (13)' }))
+  expect(screen.getByText('Task 20')).toBeInTheDocument()
+  expect(screen.queryByText('Task 21')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Load more (3)' })).toBeInTheDocument()
+})
+
+it('shows no Load more when the column fits within the limit', () => {
+  render(<KanbanColumn title="Completed" accent="green" tasks={doneTasks(10)} loading={false} limit={10} />)
+  expect(screen.getByText('Task 10')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument()
+})
+
+it('renders all tasks when no limit is given', () => {
+  render(<KanbanColumn title="Pending" accent="amber" tasks={doneTasks(12)} loading={false} />)
+  expect(screen.getByText('Task 12')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument()
 })

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import TaskCard from './TaskCard'
 
@@ -7,7 +9,11 @@ const ACCENT_DOT = {
   green: 'bg-green-500',
 }
 
-export default function KanbanColumn({ title, accent, tasks, loading }) {
+export default function KanbanColumn({ title, accent, tasks, loading, limit }) {
+  const [extra, setExtra] = useState(0)
+  const visibleTasks = limit ? tasks.slice(0, limit + extra) : tasks
+  const hidden = limit ? tasks.length - visibleTasks.length : 0
+
   return (
     <Card size="sm" className="bg-muted/40">
       <CardHeader>
@@ -23,7 +29,14 @@ export default function KanbanColumn({ title, accent, tasks, loading }) {
             <Skeleton className="h-16 w-full" />
           </>
         ) : (
-          tasks.map((taskRef, i) => <TaskCard key={i} taskRef={taskRef} />)
+          <>
+            {visibleTasks.map((taskRef, i) => <TaskCard key={i} taskRef={taskRef} />)}
+            {hidden > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setExtra((e) => e + limit)}>
+                {`Load more (${hidden})`}
+              </Button>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

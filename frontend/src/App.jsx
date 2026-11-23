@@ -75,7 +75,7 @@ export default function App() {
           <StatusBar />
           <div className="grid gap-6 md:grid-cols-2">
             <KanbanColumn title="Pending" accent="amber" tasks={board.pending} loading={!board.loaded} />
-            <KanbanColumn title="Completed" accent="green" tasks={board.completed} loading={!board.loaded} />
+            <KanbanColumn title="Completed" accent="green" tasks={board.completed} loading={!board.loaded} limit={10} />
           </div>
         </>
       )}

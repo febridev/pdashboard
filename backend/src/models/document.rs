@@ -6,6 +6,8 @@ pub struct Document {
     pub title: String,
     pub text: Option<String>,
     pub tasks: Option<DocumentTasks>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

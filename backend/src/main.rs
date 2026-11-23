@@ -5,7 +5,7 @@ mod services;
 
 use axum::{routing::get, Router};
 use config::Config;
-use routes::tasks::{get_tasks, AppState};
+use routes::tasks::{get_tasks, task_stream, AppState};
 use routes::auth::{google_login, google_callback, logout};
 use services::auth::AuthService;
 use services::live::{spawn_poller, TaskEvents};
@@ -47,6 +47,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
         .route("/api/tasks", get(get_tasks))
+        .route("/api/tasks/stream", get(task_stream))
         .route("/auth/google", get(google_login))
         .route("/auth/google/callback", get(google_callback))
         .route("/auth/logout", get(logout))

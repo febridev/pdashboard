@@ -6,10 +6,13 @@ use crate::services::live::TaskEvents;
 use crate::services::outline::OutlineClient;
 use crate::services::parser::parse_tasks_from_markdown;
 use axum::extract::State;
+use axum::http::{HeaderName, HeaderValue};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::Json;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -89,4 +92,50 @@ pub async fn get_tasks(
     }
 
     Json(TasksResponse { tasks: all_tasks })
+}
+
+fn sse_event(snapshot: &TasksResponse) -> Event {
+    Event::default()
+        .event("tasks")
+        .data(serde_json::to_string(snapshot).expect("serialize snapshot"))
+}
+
+/// SSE endpoint: sends the current snapshot immediately, then one `tasks`
+/// event each time the poller publishes a changed snapshot. Keep-alive
+/// comments keep proxies from closing the quiet connection.
+pub async fn task_stream(
+    _auth: RequireAuth,
+    State(state): State<AppState>,
+) -> impl axum::response::IntoResponse {
+    let mut rx = state.task_events.subscribe();
+    let first = rx.borrow_and_update().clone();
+    let stream = async_stream::stream! {
+        if let Some(snapshot) = first {
+            yield Ok::<Event, Infallible>(sse_event(&snapshot));
+        }
+        loop {
+            if rx.changed().await.is_err() {
+                break; // channel gone (server shutdown)
+            }
+            // Bind the clone to a local first: the Ref guard from
+            // borrow_and_update() must drop before the yield, or the
+            // generator's future is not Send.
+            let changed = rx.borrow_and_update().clone();
+            if let Some(snapshot) = changed {
+                yield Ok(sse_event(&snapshot));
+            }
+        }
+    };
+    let sse = Sse::new(stream).keep_alive(
+        KeepAlive::new()
+            .interval(Duration::from_secs(15))
+            .text("ping"),
+    );
+    (
+        [(
+            HeaderName::from_static("x-accel-buffering"),
+            HeaderValue::from_static("no"),
+        )],
+        sse,
+    )
 }

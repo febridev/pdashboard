@@ -42,6 +42,12 @@ it('renders inline markdown in task text', () => {
   expect(screen.getByText('v2', { selector: 'code' })).toBeInTheDocument()
 })
 
+it('renders GFM strikethrough in task text', () => {
+  const tasks = [{ docTitle: 'Tasks', header: 'Home', text: 'Ship ~~v1~~ v2 launch', status: 'Pending' }]
+  render(<KanbanColumn title="Pending" accent="amber" tasks={tasks} loading={false} />)
+  expect(screen.getByText('v1', { selector: 'del' })).toBeInTheDocument()
+})
+
 it('sanitizes dangerous link protocols in task text', () => {
   const tasks = [{ docTitle: 'Tasks', header: 'Home', text: 'Never visit [bad](javascript:alert(1))', status: 'Pending' }]
   render(<KanbanColumn title="Pending" accent="amber" tasks={tasks} loading={false} />)

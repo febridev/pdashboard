@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const INLINE_MD = {
   a: (props) => <a {...props} target="_blank" rel="noreferrer" className="underline underline-offset-2" />,
@@ -17,6 +18,7 @@ export default function TaskCard({ taskRef }) {
       <CardContent className="flex flex-col gap-1">
         <p className="text-xs text-muted-foreground">{`${taskRef.docTitle} › ${taskRef.header}`}</p>
         <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
           components={{
             ...INLINE_MD,
             p: (props) => (

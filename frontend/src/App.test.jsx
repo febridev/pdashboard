@@ -8,7 +8,7 @@ beforeEach(() => vi.unstubAllGlobals())
 const task3Fixture = {
   tasks: [
     { document_title: 'Tasks', groups: [
-      { header: 'Home', tasks: [
+      { header: 'Home', path: ['Home'], tasks: [
         { text: 'Buy milk', status: 'Pending' },
         { text: 'Pay rent', status: 'Completed' },
       ] },
@@ -19,7 +19,7 @@ const task3Fixture = {
 const dupFixture = {
   tasks: [
     { document_title: 'Tasks', groups: [
-      { header: 'Home', tasks: [
+      { header: 'Home', path: ['Home'], tasks: [
         { text: 'Buy milk', status: 'Pending' },
         { text: 'Buy milk', status: 'Pending' },
       ] },
@@ -75,7 +75,7 @@ it('caps the Completed column at 10 with Load more', async () => {
   const manyDone = {
     tasks: [
       { document_title: 'Tasks', groups: [
-        { header: 'Home', tasks: Array.from({ length: 12 }, (_, i) => ({ text: `Done ${i + 1}`, status: 'Completed' })) },
+        { header: 'Home', path: ['Home'], tasks: Array.from({ length: 12 }, (_, i) => ({ text: `Done ${i + 1}`, status: 'Completed' })) },
       ] },
     ],
   }

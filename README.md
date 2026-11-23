@@ -1,6 +1,6 @@
 # Personal Dashboard
 
-A personal dashboard built with Rust (Dioxus + Axum) that displays tasks from Outline in a Kanban board.
+A personal dashboard built with Rust (Axum) and React that displays tasks from Outline in a Kanban board.
 
 ## Features
 
@@ -12,7 +12,7 @@ A personal dashboard built with Rust (Dioxus + Axum) that displays tasks from Ou
 ## Architecture
 
 - **Backend** (`backend/`): Axum (Rust) — Outline API integration, markdown task parser, Google OAuth. Container listens on port 3000, mapped to host 3001.
-- **Frontend** (`frontend/`): Dioxus (Rust/WASM) — Kanban board UI, served by nginx on container port 80, mapped to host 8081. The nginx config also proxies `/api/*` and `/auth/*` to the backend, so a browser only ever needs the frontend origin.
+- **Frontend** (`frontend/`): React + Vite + Tailwind + shadcn/ui (JavaScript) — Kanban board UI served by nginx on container port 80, mapped to host 8081. The nginx config also proxies `/api/*` and `/auth/*` to the backend, so a browser only ever needs the frontend origin.
 - **Deployment**: Docker + docker-compose, reverse proxy ready.
 
 ## Prerequisites
@@ -89,6 +89,13 @@ The dashboard will be available at:
 
 You only need the frontend URL: nginx in the frontend container forwards `/api/` and `/auth/` to the backend, so the OAuth callback works on the same origin. Set `GOOGLE_REDIRECT_URI` to the URL you actually browse to (e.g. `http://localhost:8081/auth/google/callback` locally).
 
+## Verifying the deployment
+
+1. The Google console has both redirect URIs registered: `http://localhost:8081/auth/google/callback` (Docker) and `http://localhost:5173/auth/google/callback` (dev).
+2. `docker compose up -d --build` succeeds from a cold start.
+3. Open `http://localhost:8081`, sign in with Google, and confirm the board renders with tasks.
+4. Sign out: the sign-in card reappears. Sign in again and confirm it works.
+
 ## Reverse Proxy (Production)
 
 Example nginx configuration:
@@ -140,10 +147,18 @@ The backend reads its configuration from the process environment; anything not s
 
 ```bash
 cd frontend
-dx serve
+npm install
+npm run dev
 ```
 
-Note: the frontend calls `/api/tasks` on its own origin, and no dev-server proxy is configured, so for full-stack behavior (API + OAuth) use `docker compose up` and browse to `http://localhost:8081`.
+The Vite dev server runs at `http://localhost:5173` and proxies `/api` and `/auth` to the backend on `:3000`, so run `cargo run` in `backend/` alongside it.
+
+For Google login in dev:
+1. Create a gitignored `backend/.env` containing `GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback` (it overrides the root `.env` for `cargo run`).
+2. Register `http://localhost:5173/auth/google/callback` in the Google console alongside the `8081` one.
+3. Run `cargo run` in `backend/`, then open `http://localhost:5173`.
+
+Full-stack behavior without the dev server can always be checked with `docker compose up -d --build` and `http://localhost:8081`.
 
 ## Security Notes
 

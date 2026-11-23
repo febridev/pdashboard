@@ -447,7 +447,8 @@ git commit -m "build: node->nginx multi-stage frontend image, fix compose commen
 Replace lines 21–22 (`For bare cargo run … localhost:3000`) with:
 ```env
 # For local dev (Vite at http://localhost:5173 proxying to cargo run):
-# put this in a gitignored backend/.env (overrides the root .env for cargo run)
+# copy the root .env to a gitignored backend/.env and change only this line
+# (dotenv loads exactly one file: backend/.env shadows the root, no merge)
 # GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback
 # Register this URI in the Google console alongside the 8081 one.
 ```
@@ -456,7 +457,7 @@ Same note appended to `backend/.env.example`.
 - [ ] **Step 2: Rewrite the README's affected sections**
 
 - Architecture: `Frontend (frontend/): React + Vite + Tailwind + shadcn/ui (JavaScript) — Kanban board UI served by nginx on port 80…` (backend/deployment lines unchanged).
-- Local Development — Frontend: `npm install && npm run dev` (replaces `dx serve`), plus: for auth in dev, create gitignored `backend/.env` with `GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback`, register that callback in the Google console, and run `cargo run` in `backend/`.
+- Local Development — Frontend: `npm install && npm run dev` (replaces `dx serve`), plus: for auth in dev, copy the root `.env` to gitignored `backend/.env` and change only `GOOGLE_REDIRECT_URI` to `http://localhost:5173/auth/google/callback` (dotenv loads exactly one file), register that callback in the Google console, and run `cargo run` in `backend/`.
 - Keep verbatim: the HTTPS/Secure-cookie warning, the reverse-proxy section, port guidance.
 - Add a short "Verifying the deployment" checklist (this is also handed to the owner at completion): ① Google console has both redirect URIs ② `docker compose up -d --build` succeeds cold ③ `http://localhost:8081` → Google login → board renders with tasks ④ Sign out → sign-in card reappears.
 

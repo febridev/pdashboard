@@ -42,11 +42,13 @@ faster and smaller builds.
   to `cargo run` on `localhost:3000`, so the full OAuth flow works at
   `http://localhost:5173`. Two one-time setup pieces make this real (decided
   with the owner): register `http://localhost:5173/auth/google/callback` as a
-  second authorized redirect URI in the Google console, and put
-  `GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback` in a
-  gitignored `backend/.env` — the backend's dotenv lookup already prefers
-  `backend/.env` over the root `.env`, so dev and Docker each get the right
-  URI with nothing to flip between modes. (Today's `dx serve` setup can't do
+  second authorized redirect URI in the Google console, and make a
+  gitignored `backend/.env` that is a **full copy of the root `.env` with
+  only `GOOGLE_REDIRECT_URI` changed** to
+  `http://localhost:5173/auth/google/callback` — the backend's dotenv
+  loads exactly one `.env`, and `backend/.env` shadows the root file
+  entirely (no merge), so dev and Docker each get the right URI with
+  nothing to flip between modes. (Today's `dx serve` setup can't do
   any of this; you have to run Docker for auth.)
 - `docker-compose.yml` unchanged: same services, ports (frontend `8081:80`,
   backend `3001:3000`), same `GOOGLE_REDIRECT_URI` guidance. Only the frontend
@@ -122,8 +124,10 @@ enough that the small React runtime cost is irrelevant.
   Outline-side failure yields an empty board rather than an error card.
 - **Dev auth setup**: both redirect URIs registered in the Google console
   (5173 for dev plus the compose/production URI); root `.env` keeps the
-  Docker URI, gitignored `backend/.env` carries the 5173 URI for `cargo
-  run`. Document both in `.env.example` comments and the README.
+  Docker URI; gitignored `backend/.env` — a full copy of the root file with
+  only the redirect URI changed — serves `cargo run` at 5173 (dotenv loads
+  exactly one file: it shadows, not merges). Document both in
+  `.env.example` comments and the README.
 - **docker-compose.yml** stays as-is except its header comment, which still
   says "Dioxus frontend" — one-word fix.
 - **In place, not beside**: cut a `dioxus-frontend` branch first to preserve

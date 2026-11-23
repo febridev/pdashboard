@@ -151,7 +151,7 @@ git add -A && git commit -m "feat: scaffold React+Vite+Tailwind+shadcn frontend 
 - Produces:
   - `class ApiError extends Error` with `kind` ∈ `{'unauthorized','other'}` and user-visible `message`
   - `parseTasksResponse(raw: unknown): TasksResponse` — validates the exact contract; throws `ApiError('other', detail)` on any violation
-  - `fetchTasks(): Promise<TasksResponse>` — GET `/api/tasks`; 401 → `ApiError('unauthorized', 'Not authenticated')`; other non-OK → `ApiError('other', 'HTTP <status>')`; network reject → `ApiError('other', err.message)`; OK → `parseTasksResponse(res.json())`
+  - `fetchTasks(): Promise<TasksResponse>` — GET `/api/tasks`; 401 → `ApiError('unauthorized', 'Not authenticated')`; other non-OK → `ApiError('other', 'HTTP <status>')`; network reject → `ApiError('other', err.message)`; OK → `parseTasksResponse(res.json())`; OK response whose body fails to parse as JSON → `ApiError('other', 'Invalid JSON response')` (the spec's fidelity rule: parse failures must reach the error card)
   - `TasksResponse = { tasks: Array<{ document_title: string, groups: Array<{ header: string, tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }`
 
 - [ ] **Step 1: Write the failing tests**

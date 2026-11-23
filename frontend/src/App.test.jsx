@@ -1,8 +1,72 @@
-import { it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import App from './App'
 
-it('renders the dashboard shell', () => {
+afterEach(cleanup)
+beforeEach(() => vi.unstubAllGlobals())
+
+const task3Fixture = {
+  tasks: [
+    { document_title: 'Tasks', groups: [
+      { header: 'Home', tasks: [
+        { text: 'Buy milk', status: 'Pending' },
+        { text: 'Pay rent', status: 'Completed' },
+      ] },
+    ] },
+  ],
+}
+
+const dupFixture = {
+  tasks: [
+    { document_title: 'Tasks', groups: [
+      { header: 'Home', tasks: [
+        { text: 'Buy milk', status: 'Pending' },
+        { text: 'Buy milk', status: 'Pending' },
+      ] },
+    ] },
+  ],
+}
+
+it('shows the Signed in bar and loading columns before the fetch resolves', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {}))) // never resolves
   render(<App />)
-  expect(screen.getByText('Personal Dashboard')).toBeInTheDocument()
+  expect(screen.getByText('Signed in')).toBeInTheDocument()
+  expect(document.querySelectorAll('[data-slot="skeleton"], .animate-pulse').length).toBeGreaterThan(0)
+})
+
+it('shows the sign-in card on unauthorized', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }))
+  render(<App />)
+  await screen.findByText('Please sign in to view your tasks')
+  expect(screen.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', '/auth/google')
+})
+
+it('shows the error card with the message on other failures (never sign-in)', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
+  render(<App />)
+  await screen.findByText('Failed to load tasks')
+  expect(screen.getByText('HTTP 502')).toBeInTheDocument()
+  expect(screen.queryByText('Please sign in to view your tasks')).not.toBeInTheDocument()
+})
+
+it('renders the board from a 200 with tasks', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(task3Fixture) }))
+  render(<App />)
+  expect(await screen.findByText('Pending (1)')).toBeInTheDocument()
+  expect(screen.getByText('Completed (1)')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Sign out' })).toHaveAttribute('href', '/auth/logout')
+})
+
+it('renders duplicate identical tasks without key collisions', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(dupFixture) }))
+  render(<App />)
+  expect(await screen.findByText('Pending (2)')).toBeInTheDocument()
+  expect(screen.getAllByText('Buy milk')).toHaveLength(2)
+})
+
+it('renders an empty board when tasks is empty', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ tasks: [] }) }))
+  render(<App />)
+  expect(await screen.findByText('Pending (0)')).toBeInTheDocument()
+  expect(screen.queryByText('Failed to load tasks')).not.toBeInTheDocument()
 })

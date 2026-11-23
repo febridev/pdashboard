@@ -1,4 +1,4 @@
-# Personal dashboard: Axum backend + Dioxus frontend served by nginx.
+# Personal dashboard: Axum backend + React/Vite frontend served by nginx.
 # Before `docker compose up`: create a .env in this directory from
 # backend/.env.example with real secrets (never committed).
 # The frontend proxies /api/* and /auth/* to the backend, so the browser only

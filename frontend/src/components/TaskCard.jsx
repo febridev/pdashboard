@@ -6,7 +6,7 @@ export default function TaskCard({ taskRef }) {
   return (
     <Card
       size="sm"
-      className={completed ? undefined : 'border-l-4 border-l-amber-400'}
+      className={completed ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-amber-400'}
     >
       <CardContent className="flex flex-col gap-1">
         <p className="text-xs text-muted-foreground">{`${taskRef.docTitle} › ${taskRef.header}`}</p>

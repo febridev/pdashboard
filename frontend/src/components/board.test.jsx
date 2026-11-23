@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import KanbanColumn from './KanbanColumn'
 
@@ -24,6 +24,7 @@ it('renders task context lines and literal task text', () => {
 it('renders completed tasks with line-through styling', () => {
   render(<KanbanColumn title="Completed" accent="green" tasks={completed} loading={false} />)
   expect(screen.getByText('Pay rent')).toHaveClass('line-through')
+  expect(screen.getByText('Pay rent').closest('[data-slot="card"]')).toHaveClass('border-l-green-500')
 })
 
 it('renders an empty column with zero count and no cards', () => {

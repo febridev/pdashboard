@@ -1,17 +1,18 @@
-import { it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import KanbanColumn from './KanbanColumn'
+import PendingColumn from './PendingColumn'
 
 afterEach(cleanup)
 
 const pending = [
-  { docTitle: 'Tasks', header: 'Home', text: 'Buy milk', status: 'Pending' },
-  { docTitle: 'Tasks', header: 'Home', text: '<script>alert(1)</script>', status: 'Pending' },
+  { docTitle: 'Tasks', header: 'Home', path: ['Home'], text: 'Buy milk', status: 'Pending' },
+  { docTitle: 'Tasks', header: 'Home', path: ['Home'], text: '<script>alert(1)</script>', status: 'Pending' },
 ]
-const completed = [{ docTitle: 'Tasks', header: 'Home', text: 'Pay rent', status: 'Completed' }]
+const completed = [{ docTitle: 'Tasks', header: 'Home', path: ['Home'], text: 'Pay rent', status: 'Completed' }]
 
 const doneTasks = (n) =>
-  Array.from({ length: n }, (_, i) => ({ docTitle: 'Tasks', header: 'Home', text: `Task ${i + 1}`, status: 'Completed' }))
+  Array.from({ length: n }, (_, i) => ({ docTitle: 'Tasks', header: 'Home', path: ['Home'], text: `Task ${i + 1}`, status: 'Completed' }))
 
 it('shows the column title with count', () => {
   render(<KanbanColumn title="Pending" accent="amber" tasks={pending} loading={false} />)
@@ -27,9 +28,15 @@ it('renders task context lines and never raw HTML from task text', () => {
   expect(container.querySelector('script')).toBeNull() // raw HTML dropped, never executed
 })
 
+it('renders completed context with the full heading path', () => {
+  const tasks = [{ docTitle: 'task', header: '2026-11-23', path: ['smthk-amdb', '2026-11-23'], text: 'Ship it', status: 'Completed' }]
+  render(<KanbanColumn title="Completed" accent="green" tasks={tasks} loading={false} />)
+  expect(screen.getByText('task › smthk-amdb › 2026-11-23')).toBeInTheDocument()
+})
+
 it('renders inline markdown in task text', () => {
   const tasks = [{
-    docTitle: 'Tasks', header: 'Home',
+    docTitle: 'Tasks', header: 'Home', path: ['Home'],
     text: 'Fix **login** flow — see [docs](https://example.com/guide) and `v2` notes',
     status: 'Pending',
   }]
@@ -43,13 +50,13 @@ it('renders inline markdown in task text', () => {
 })
 
 it('renders GFM strikethrough in task text', () => {
-  const tasks = [{ docTitle: 'Tasks', header: 'Home', text: 'Ship ~~v1~~ v2 launch', status: 'Pending' }]
+  const tasks = [{ docTitle: 'Tasks', header: 'Home', path: ['Home'], text: 'Ship ~~v1~~ v2 launch', status: 'Pending' }]
   render(<KanbanColumn title="Pending" accent="amber" tasks={tasks} loading={false} />)
   expect(screen.getByText('v1', { selector: 'del' })).toBeInTheDocument()
 })
 
 it('sanitizes dangerous link protocols in task text', () => {
-  const tasks = [{ docTitle: 'Tasks', header: 'Home', text: 'Never visit [bad](javascript:alert(1))', status: 'Pending' }]
+  const tasks = [{ docTitle: 'Tasks', header: 'Home', path: ['Home'], text: 'Never visit [bad](javascript:alert(1))', status: 'Pending' }]
   render(<KanbanColumn title="Pending" accent="amber" tasks={tasks} loading={false} />)
   // react-markdown drops the dangerous href entirely; the anchor keeps no link role,
   // so query by text/selector and assert the URL never survives.
@@ -96,4 +103,54 @@ it('renders all tasks when no limit is given', () => {
   render(<KanbanColumn title="Pending" accent="amber" tasks={doneTasks(12)} loading={false} />)
   expect(screen.getByText('Task 12')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument()
+})
+
+it('scrolls the flat column content internally', () => {
+  const { container } = render(<KanbanColumn title="Completed" accent="green" tasks={doneTasks(12)} loading={false} limit={10} />)
+  expect(container.querySelector('[data-slot="card-content"]')).toHaveClass('max-h-[70vh]', 'overflow-y-auto')
+})
+
+const groups = [
+  { name: 'smthk-amdb', subgroups: [
+    { label: '2026-11-23', tasks: [
+      { docTitle: 'task', header: '2026-11-23', path: ['smthk-amdb', '2026-11-23'], text: 'do X', status: 'Pending' },
+    ] },
+    { label: 'No Due Date', tasks: [
+      { docTitle: 'task', header: 'smthk-amdb', path: ['smthk-amdb'], text: 'do W', status: 'Pending' },
+    ] },
+  ] },
+]
+
+describe('PendingColumn', () => {
+  it('renders name groups with counts, subgroup labels, and no context lines', () => {
+    render(<PendingColumn title="Pending" accent="amber" groups={groups} loading={false} />)
+    expect(screen.getByText('Pending (2)')).toBeInTheDocument()
+    expect(screen.getByText('smthk-amdb (2)')).toBeInTheDocument()
+    expect(screen.getByText('2026-11-23')).toBeInTheDocument()
+    expect(screen.getByText('No Due Date')).toBeInTheDocument()
+    expect(screen.getByText('do X')).toBeInTheDocument()
+    expect(screen.getByText('do W')).toBeInTheDocument()
+    expect(screen.queryByText(/›/)).not.toBeInTheDocument() // pending cards carry no context line
+  })
+
+  it('collapses a group on click and restores it on the next click', () => {
+    render(<PendingColumn title="Pending" accent="amber" groups={groups} loading={false} />)
+    const toggle = screen.getByRole('button', { name: 'smthk-amdb (2)' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('do X')).not.toBeInTheDocument() // unmounted, not hidden
+    fireEvent.click(toggle)
+    expect(screen.getByText('do X')).toBeInTheDocument()
+  })
+
+  it('renders an empty pending column with zero count', () => {
+    render(<PendingColumn title="Pending" accent="amber" groups={[]} loading={false} />)
+    expect(screen.getByText('Pending (0)')).toBeInTheDocument()
+  })
+
+  it('scrolls the pending column content internally', () => {
+    const { container } = render(<PendingColumn title="Pending" accent="amber" groups={groups} loading={false} />)
+    expect(container.querySelector('[data-slot="card-content"]')).toHaveClass('max-h-[70vh]', 'overflow-y-auto')
+  })
 })

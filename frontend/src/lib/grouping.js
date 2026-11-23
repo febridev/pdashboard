@@ -1,36 +1,6 @@
 /**
- * Flattens a validated TasksResponse into the two Kanban columns.
- * Order preserved: document order → group order → task order, within each column.
- *
- * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse
- * @returns {{ pending: TaskRef[], completed: TaskRef[] }}
- *
  * @typedef {{ docTitle: string, header: string, text: string, status: 'Pending' | 'Completed', path: string[] }} TaskRef
  */
-export function splitTasks(tasksResponse) {
-  const pending = []
-  const completed = []
-
-  for (const doc of tasksResponse.tasks) {
-    for (const group of doc.groups) {
-      for (const task of group.tasks) {
-        const ref = {
-          docTitle: doc.document_title,
-          header: group.header,
-          text: task.text,
-          status: task.status,
-        }
-        if (task.status === 'Completed') {
-          completed.push(ref)
-        } else {
-          pending.push(ref)
-        }
-      }
-    }
-  }
-
-  return { pending, completed }
-}
 
 const NO_DUE_DATE = 'No Due Date'
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -41,7 +11,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
  * Name groups keyed by first appearance (merged across docs by name string); within a name:
  * ISO-dated labels ascending first, then non-ISO labels in appearance order, then No Due Date last.
  *
- * @param {Parameters<typeof splitTasks>[0]} tasksResponse
+ * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, path: string[], tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse
  * @returns {Array<{ name: string, subgroups: Array<{ label: string, tasks: TaskRef[] }> }>}
  */
 export function groupPending(tasksResponse) {
@@ -93,7 +63,7 @@ export function groupPending(tasksResponse) {
 /**
  * Flattens completed tasks into a single list, in document → group → task order.
  *
- * @param {Parameters<typeof splitTasks>[0]} tasksResponse
+ * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, path: string[], tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse
  * @returns {TaskRef[]}
  */
 export function splitCompleted(tasksResponse) {

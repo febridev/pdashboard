@@ -7,7 +7,7 @@ const INLINE_MD = {
   code: (props) => <code {...props} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]" />,
 }
 
-export default function TaskCard({ taskRef }) {
+export default function TaskCard({ taskRef, showContext = true }) {
   const completed = taskRef.status === 'Completed'
 
   return (
@@ -16,7 +16,7 @@ export default function TaskCard({ taskRef }) {
       className={completed ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-amber-400'}
     >
       <CardContent className="flex flex-col gap-1">
-        <p className="text-xs text-muted-foreground">{`${taskRef.docTitle} › ${taskRef.header}`}</p>
+        {showContext && <p className="text-xs text-muted-foreground">{`${taskRef.docTitle} › ${taskRef.path.join(' › ')}`}</p>}
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

@@ -22,7 +22,7 @@ export default function KanbanColumn({ title, accent, tasks, loading, limit }) {
           {`${title} (${tasks.length})`}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="flex max-h-[70vh] flex-col gap-2 overflow-y-auto">
         {loading ? (
           <>
             <Skeleton className="h-16 w-full" />

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import KanbanColumn from '@/components/KanbanColumn'
-import PendingColumn from '@/components/PendingColumn'
+import GroupedColumn from '@/components/GroupedColumn'
 import { ApiError, fetchTasks } from '@/lib/api'
-import { groupPending, splitCompleted } from '@/lib/grouping'
+import { groupCompleted, groupPending } from '@/lib/grouping'
 
 function StatusBar() {
   return (
@@ -41,7 +40,7 @@ export default function App() {
   }, [])
 
   const board = state.status === 'ok'
-    ? { pending: groupPending(state.tasks), completed: splitCompleted(state.tasks), loaded: true }
+    ? { pending: groupPending(state.tasks), completed: groupCompleted(state.tasks), loaded: true }
     : { pending: [], completed: [], loaded: false }
 
   return (
@@ -75,8 +74,8 @@ export default function App() {
         <>
           <StatusBar />
           <div className="grid gap-6 md:grid-cols-2">
-            <PendingColumn title="Pending" accent="amber" groups={board.pending} loading={!board.loaded} />
-            <KanbanColumn title="Completed" accent="green" tasks={board.completed} loading={!board.loaded} limit={10} />
+            <GroupedColumn title="Pending" accent="amber" groups={board.pending} loading={!board.loaded} />
+            <GroupedColumn title="Completed" accent="green" groups={board.completed} loading={!board.loaded} />
           </div>
         </>
       )}

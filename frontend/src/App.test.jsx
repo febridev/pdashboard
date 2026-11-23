@@ -71,7 +71,7 @@ it('renders an empty board when tasks is empty', async () => {
   expect(screen.queryByText('Failed to load tasks')).not.toBeInTheDocument()
 })
 
-it('caps the Completed column at 10 with Load more', async () => {
+it('renders completed tasks grouped by name without Load more', async () => {
   const manyDone = {
     tasks: [
       { document_title: 'Tasks', groups: [
@@ -82,6 +82,6 @@ it('caps the Completed column at 10 with Load more', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(manyDone) }))
   render(<App />)
   expect(await screen.findByText('Completed (12)')).toBeInTheDocument()
-  expect(screen.getByText('Done 10')).toBeInTheDocument()
-  expect(screen.queryByText('Done 11')).not.toBeInTheDocument()
+  expect(screen.getByText('Done 12')).toBeInTheDocument() // all visible; collapse + scroll handle length
+  expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument()
 })

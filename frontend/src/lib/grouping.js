@@ -95,30 +95,3 @@ export function groupCompleted(tasksResponse) {
 
   return Array.from(byName, ([name, tasks]) => ({ name, subgroups: [{ label: null, tasks }] }))
 }
-
-/**
- * Flattens completed tasks into a single list, in document → group → task order.
- *
- * @param {{ tasks: Array<{ document_title: string, groups: Array<{ header: string, path: string[], tasks: Array<{ text: string, status: 'Pending' | 'Completed' }> }> }> }} tasksResponse
- * @returns {TaskRef[]}
- */
-export function splitCompleted(tasksResponse) {
-  const completed = []
-
-  for (const doc of tasksResponse.tasks) {
-    for (const group of doc.groups) {
-      for (const task of group.tasks) {
-        if (task.status !== 'Completed') continue
-        completed.push({
-          docTitle: doc.document_title,
-          header: group.header,
-          text: task.text,
-          status: task.status,
-          path: group.path,
-        })
-      }
-    }
-  }
-
-  return completed
-}

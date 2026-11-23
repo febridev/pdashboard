@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupCompleted, groupPending, splitCompleted } from './grouping'
+import { groupCompleted, groupPending } from './grouping'
 
 const nestedFixture = {
   tasks: [
@@ -99,16 +99,5 @@ describe('groupCompleted', () => {
 
   it('returns [] for an empty response', () => {
     expect(groupCompleted({ tasks: [] })).toEqual([])
-  })
-})
-
-describe('splitCompleted', () => {
-  it('returns completed refs flat with path, in document order', () => {
-    expect(splitCompleted(nestedFixture)).toEqual([
-      { docTitle: 'task', header: '2026-11-23', text: 'do Y', status: 'Completed', path: ['smthk-amdb', '2026-11-23'] },
-    ])
-  })
-  it('returns [] for an empty response', () => {
-    expect(splitCompleted({ tasks: [] })).toEqual([])
   })
 })

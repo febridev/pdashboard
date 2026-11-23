@@ -24,15 +24,15 @@ function GroupSection({ name, subgroups }) {
       </Button>
       {open && subgroups.map((s) => (
         <div key={s.label} className="flex flex-col gap-1.5 pl-1">
-          <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
-          {s.tasks.map((t, i) => <TaskCard key={i} taskRef={t} showContext={false} />)}
+          {s.label && <p className="text-xs font-medium text-muted-foreground">{s.label}</p>}
+          {s.tasks.map((t, i) => <TaskCard key={i} taskRef={t} />)}
         </div>
       ))}
     </div>
   )
 }
 
-export default function PendingColumn({ title, accent, groups, loading }) {
+export default function GroupedColumn({ title, accent, groups, loading }) {
   const total = groups.reduce((n, g) => n + g.subgroups.reduce((m, s) => m + s.tasks.length, 0), 0)
   return (
     <Card size="sm" className="bg-muted/40">
